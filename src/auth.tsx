@@ -1,56 +1,65 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
-import { api, clearToken, getToken, saveToken } from "./api";
+import React, { createContext, useContext, useEffect, useState } from "react";
+import { clearToken, getToken, saveToken, api } from "./api";
 
-type AuthState = {
-  loading: boolean;
+type User = { id: number; name: string; email: string };
+
+type AuthContextType = {
   signedIn: boolean;
-  signIn: (email: string, password: string) => Promise<void>;
-  signUp: (name: string, email: string, password: string) => Promise<void>;
+  loading: boolean;
+  user: User | null;
+  signIn: (token: string, userData: User) => Promise<void>;
   signOut: () => Promise<void>;
 };
 
-const AuthContext = createContext<AuthState | null>(null);
+const AuthContext = createContext<AuthContextType>({
+  signedIn: false,
+  loading: true,
+  user: null,
+  signIn: async () => {},
+  signOut: async () => {},
+});
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [loading, setLoading] = useState(true);
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [signedIn, setSignedIn] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
     (async () => {
       try {
-        setSignedIn(!!(await getToken()));
+        const token = await getToken();
+        if (token) {
+          const res = await api.getMe();
+          setUser(res.user);
+          setSignedIn(true);
+        }
+      } catch {
+        await clearToken();
+        setSignedIn(false);
+        setUser(null);
       } finally {
         setLoading(false);
       }
     })();
   }, []);
 
-  const signIn = useCallback(async (email: string, password: string) => {
-    const { token } = await api.login(email, password);
+  const signIn = async (token: string, userData: User) => {
     await saveToken(token);
+    setUser(userData);
     setSignedIn(true);
-  }, []);
+  };
 
-  const signUp = useCallback(async (name: string, email: string, password: string) => {
-    const { token } = await api.register(name, email, password);
-    await saveToken(token);
-    setSignedIn(true);
-  }, []);
-
-  const signOut = useCallback(async () => {
+  const signOut = async () => {
     await clearToken();
+    setUser(null);
     setSignedIn(false);
-  }, []);
+  };
 
   return (
-    <AuthContext.Provider value={{ loading, signedIn, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ signedIn, loading, user, signIn, signOut }}>
       {children}
     </AuthContext.Provider>
   );
-}
+};
 
-export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used inside AuthProvider");
-  return ctx;
-}
+export const useAuth = () => useContext(AuthContext);
