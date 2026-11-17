@@ -1,0 +1,4 @@
+node_modules
+calmify.db
+.env
+.DS_Store
