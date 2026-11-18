@@ -1,13 +1,8 @@
 import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
 
-// Live Production URL vs Localhost URL
-// When deployed on Render / Railway / Heroku, swap this to your live URL
-export const BASE_URL = Platform.select({
-  web: "http://localhost:5000",
-  android: "http://10.0.2.2:5000",
-  default: "http://localhost:5000"
-});
+// Live Production Backend on Render
+export const BASE_URL = "https://calmify-api-ix8y.onrender.com";
 
 const TOKEN_KEY = "calmify_jwt_token";
 
